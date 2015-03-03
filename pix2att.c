@@ -170,7 +170,7 @@ int main( int argc, char *argv[] )
         OGR_F_Destroy( hFeature );
     }
     pfnProgress( 0.0, NULL, NULL );
-    for( i = 0; i < 10; i++ )
+    for( i = 0; i < n; i++ )
     {
         hFeature = OGR_L_GetFeature( hLayer, panFids[i] );
         hGeometry = OGR_F_GetGeometryRef( hFeature );
