@@ -30,6 +30,7 @@
 #include <assert.h>
 #include <stdlib.h>
 
+#include "cpl_conv.h"
 #include "gdal.h"
 
 void Usage()
@@ -63,7 +64,7 @@ int main( int argc, char *argv[] )
     OGRSpatialReferenceH hRasterSRS, hVectorSRS;
     OGRCoordinateTransformationH hCt;
     int bTransform = FALSE;
-    GIntBig *nFids;
+    GIntBig *panFids;
 
     int nTransactions = 1;
 
@@ -108,14 +109,19 @@ int main( int argc, char *argv[] )
     GDALAllRegister();
     hRasterDS = GDALOpenEx( pszRaster, GDAL_OF_RASTER | GDAL_OF_READONLY,
                             NULL, NULL, NULL );
-    hVectorDS = GDALOpenEx( pszVector, GDAL_OF_VECTOR | GDAL_OF_UPDATE,
-                           NULL, NULL, NULL ); 
-    if( !hRasterDS || !hVectorDS )
+    if( !hRasterDS )
     {
-        printf( "Failed to open a dataset.\n" );
+        printf( "Failed to open raster dataset.\n" );
         return 1;
     }
-
+    hVectorDS = GDALOpenEx( pszVector, GDAL_OF_VECTOR | GDAL_OF_UPDATE,
+                           NULL, NULL, NULL ); 
+    if( !hVectorDS )
+    {
+        GDALClose( hRasterDS );
+        printf( "Failed to open vector dataset.\n" );
+        return 1;
+    }
     rc = GDALGetGeoTransform( hRasterDS, adfGeoTransform );
     assert( rc == 0 );
     rc = GDALInvGeoTransform( adfGeoTransform, adfInvGeoTransform );
@@ -133,6 +139,7 @@ int main( int argc, char *argv[] )
 
     if( OGR_L_CreateField( hLayer, hFieldDefn, TRUE ) != OGRERR_NONE )
     {
+        OGR_Fld_Destroy( hFieldDefn );
         printf( "Creating Name field failed.\n" );
         exit( 1 );
     }
@@ -155,17 +162,17 @@ int main( int argc, char *argv[] )
     n = OGR_L_GetFeatureCount( hLayer, TRUE );
     OGR_L_ResetReading( hLayer );
 
-    nFids = CPLMalloc( sizeof( GIntBig ) * n );
+    panFids = CPLMalloc( sizeof( GIntBig ) * n );
     i = 0;
     while( (hFeature = OGR_L_GetNextFeature( hLayer ) ) != NULL )
     {
-        nFids[i++] = OGR_F_GetFID( hFeature );
+        panFids[i++] = OGR_F_GetFID( hFeature );
         OGR_F_Destroy( hFeature );
     }
     pfnProgress( 0.0, NULL, NULL );
-    for( i = 0; i < n; i++ )
+    for( i = 0; i < 10; i++ )
     {
-        hFeature = OGR_L_GetFeature( hLayer, nFids[i] );
+        hFeature = OGR_L_GetFeature( hLayer, panFids[i] );
         hGeometry = OGR_F_GetGeometryRef( hFeature );
         dfX = OGR_G_GetX( hGeometry, 0 );
         dfY = OGR_G_GetY( hGeometry, 0 );
@@ -191,6 +198,7 @@ int main( int argc, char *argv[] )
     }
     pfnProgress( 1.0, NULL, NULL );
 
+    CPLFree( panFids );
     OSRDestroySpatialReference( hRasterSRS );
     OCTDestroyCoordinateTransformation( hCt );
     GDALClose( hRasterDS );
