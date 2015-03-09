@@ -35,7 +35,7 @@
 
 void Usage()
 {
-    printf( "pointpixel [-b band] [-p] [-gt n] raster point layer attribute\n" );
+    printf( "pix2att [-b band] [-p] [-gt n] raster point layer attribute\n" );
 }
 
 static int TransformGeoToPixelSpace( double *adfInvGeoTransform, double dfX,
@@ -87,9 +87,9 @@ int main( int argc, char *argv[] )
     {
         if( EQUAL( argv[i], "-b" ) )
             nBand = atoi( argv[++i] );
-        if( EQUAL( argv[i], "-p" ) )
+        else if( EQUAL( argv[i], "-p" ) )
             pfnProgress = GDALTermProgress;
-        if( EQUAL( argv[i], "-gt" ) )
+        else if( EQUAL( argv[i], "-gt" ) )
             nTransactions = atoi( argv[++i] );
         else if( pszRaster == NULL )
             pszRaster = argv[i];
@@ -170,6 +170,7 @@ int main( int argc, char *argv[] )
         OGR_F_Destroy( hFeature );
     }
     pfnProgress( 0.0, NULL, NULL );
+    OGR_L_StartTransaction( hLayer );
     for( i = 0; i < n; i++ )
     {
         hFeature = OGR_L_GetFeature( hLayer, panFids[i] );
@@ -195,7 +196,13 @@ int main( int argc, char *argv[] )
         OGR_L_SetFeature( hLayer, hFeature );
         OGR_F_Destroy( hFeature );
         pfnProgress( (float)i / (float)n, NULL, NULL );
+        if( i % nTransactions == 0 )
+        {
+            OGR_L_CommitTransaction( hLayer );
+            OGR_L_StartTransaction( hLayer );
+        }
     }
+    OGR_L_CommitTransaction( hLayer );
     pfnProgress( 1.0, NULL, NULL );
 
     CPLFree( panFids );
