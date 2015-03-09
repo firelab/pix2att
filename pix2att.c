@@ -72,6 +72,8 @@ int main( int argc, char *argv[] )
     int nVal;
     GDALDataType eType;
 
+    CPLErr eErr;
+
     const char *pszRaster = NULL;
     const char *pszVector = NULL;
     int nBand = 1;
@@ -182,16 +184,21 @@ int main( int argc, char *argv[] )
         TransformGeoToPixelSpace( adfInvGeoTransform, dfX, dfY, &iPixel, &iLine );
         if( eType >= GDT_Float32 )
         {
-            GDALRasterIO( hBand, GF_Read, iPixel, iLine, 1, 1,
-                          &dfVal, 1, 1, GDT_Float64, 0, 0 );
+            eErr = GDALRasterIO( hBand, GF_Read, iPixel, iLine, 1, 1,
+                                 &dfVal, 1, 1, GDT_Float64, 0, 0 );
 
             OGR_F_SetFieldDouble( hFeature, iField, dfVal );
         }
         else
         {
-            GDALRasterIO( hBand, GF_Read, iPixel, iLine, 1, 1,
-                          &nVal, 1, 1, GDT_Int32, 0, 0 );
+            eErr = GDALRasterIO( hBand, GF_Read, iPixel, iLine, 1, 1,
+                                 &nVal, 1, 1, GDT_Int32, 0, 0 );
             OGR_F_SetFieldInteger( hFeature, iField, nVal );
+        }
+        if( eErr != CE_None )
+        {
+            OGR_F_Destroy( hFeature );
+            continue;
         }
         OGR_L_SetFeature( hLayer, hFeature );
         OGR_F_Destroy( hFeature );
