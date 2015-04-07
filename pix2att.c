@@ -134,21 +134,24 @@ int main( int argc, char *argv[] )
         exit( 1 );
 
     eType = GDALGetRasterDataType( hBand );
-    if( eType >= GDT_Float32 )
-        hFieldDefn = OGR_Fld_Create( pszAtt, OFTReal );
-    else
-        hFieldDefn = OGR_Fld_Create( pszAtt, OFTInteger );
 
-    if( OGR_L_CreateField( hLayer, hFieldDefn, TRUE ) != OGRERR_NONE )
-    {
-        OGR_Fld_Destroy( hFieldDefn );
-        printf( "Creating Name field failed.\n" );
-        exit( 1 );
-    }
-    OGR_Fld_Destroy( hFieldDefn );
     hFeatDefn = OGR_L_GetLayerDefn( hLayer );
-    iField = OGR_FD_GetFieldIndex( hFeatDefn, pszAtt );
+    if( OGR_FD_GetFieldIndex( hFeieldDefnatDefn, pszAtt ) < 0 )
+    {
+        if( eType >= GDT_Float32 )
+            hFieldDefn = OGR_Fld_Create( pszAtt, OFTReal );
+        else
+            hFieldDefn = OGR_Fld_Create( pszAtt, OFTInteger );
 
+        if( OGR_L_CreateField( hLayer, hFieldDefn, TRUE ) != OGRERR_NONE )
+        {
+            OGR_Fld_Destroy( hFieldDefn );
+            printf( "Creating Name field failed.\n" );
+            exit( 1 );
+        }
+        OGR_Fld_Destroy( hFieldDefn );
+    }
+    iField = OGR_FD_GetFieldIndex( hFeatDefn, pszAtt );
     /* Setup coordinate transformation if needed */
     hRasterSRS = OSRNewSpatialReference( GDALGetProjectionRef( hRasterDS ) );
     hVectorSRS = OGR_L_GetSpatialRef( hLayer );
@@ -187,12 +190,19 @@ int main( int argc, char *argv[] )
             eErr = GDALRasterIO( hBand, GF_Read, iPixel, iLine, 1, 1,
                                  &dfVal, 1, 1, GDT_Float64, 0, 0 );
 
+            if( eErr != CE_None )
+                dfVal = 0;
+
             OGR_F_SetFieldDouble( hFeature, iField, dfVal );
         }
         else
         {
             eErr = GDALRasterIO( hBand, GF_Read, iPixel, iLine, 1, 1,
                                  &nVal, 1, 1, GDT_Int32, 0, 0 );
+
+            if( eErr != CE_None )
+                nVal = 0;
+
             OGR_F_SetFieldInteger( hFeature, iField, nVal );
         }
         if( eErr != CE_None )
